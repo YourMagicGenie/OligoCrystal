@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="Concept illustration of a glass pendant necklace">
+<defs>
+<radialGradient id="glow" cx=".5" cy=".62" r=".5"><stop offset="0" stop-color="#4fd1c5" stop-opacity=".25"/><stop offset="1" stop-color="#07070c" stop-opacity="0"/></radialGradient>
+<linearGradient id="ins" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b48cff"/><stop offset=".5" stop-color="#4fd1c5"/><stop offset="1" stop-color="#ffb454"/></linearGradient>
+</defs>
+<rect width="320" height="320" fill="#07070c"/>
+<circle cx="160" cy="200" r="150" fill="url(#glow)"/>
+<path d="M40 20C70 110 120 130 160 132M280 20C250 110 200 130 160 132" fill="none" stroke="#6d6c85" stroke-width="2.5"/>
+<circle cx="160" cy="138" r="7" fill="none" stroke="#b3b2c8" stroke-width="3"/>
+<path d="M160 146c-40 40-56 68-56 92a56 56 0 0 0 112 0c0-24-16-52-56-92Z" fill="#ffffff" fill-opacity=".05" stroke="#d9e8ff" stroke-opacity=".7" stroke-width="3"/>
+<path d="M160 166c-30 32-42 54-42 72a42 42 0 0 0 84 0c0-18-12-40-42-72Z" fill="none" stroke="#d9e8ff" stroke-opacity=".35" stroke-width="2"/>
+<g fill="url(#ins)" opacity=".9">
+<path d="M136 252l10-30 10 22-6 18Z"/><path d="M152 262l6-42 14 26-4 22Z"/><path d="M170 258l8-24 10 16-6 16Z"/><path d="M146 230l8-16 6 12-6 10Z"/><path d="M166 224l6-12 6 10-4 10Z"/>
+</g>
+<path d="M132 190c4-10 10-18 16-24" stroke="#ffffff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round" fill="none"/>
+</svg>
