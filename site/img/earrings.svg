@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="Concept illustration of glass drop earrings">
+<defs>
+<radialGradient id="glow" cx=".5" cy=".6" r=".55"><stop offset="0" stop-color="#b48cff" stop-opacity=".22"/><stop offset="1" stop-color="#07070c" stop-opacity="0"/></radialGradient>
+<linearGradient id="ins" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#ffb454"/><stop offset=".5" stop-color="#4fd1c5"/><stop offset="1" stop-color="#b48cff"/></linearGradient>
+</defs>
+<rect width="320" height="320" fill="#07070c"/>
+<circle cx="160" cy="190" r="150" fill="url(#glow)"/>
+<g id="e">
+<path d="M100 60c-14 0-14 22 0 26" fill="none" stroke="#b3b2c8" stroke-width="3" stroke-linecap="round"/>
+<path d="M100 86v24" stroke="#b3b2c8" stroke-width="3"/>
+<circle cx="100" cy="160" r="48" fill="#ffffff" fill-opacity=".05" stroke="#d9e8ff" stroke-opacity=".7" stroke-width="3"/>
+<circle cx="100" cy="160" r="36" fill="none" stroke="#d9e8ff" stroke-opacity=".35" stroke-width="2"/>
+<g fill="url(#ins)" opacity=".9"><path d="M80 176l8-24 8 18-4 14Z"/><path d="M94 182l4-36 12 22-4 18Z"/><path d="M108 178l6-18 8 12-4 12Z"/></g>
+<path d="M70 140c4-8 10-14 18-18" stroke="#ffffff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round" fill="none"/>
+</g>
+<use href="#e" x="120" y="30"/>
+</svg>
