@@ -1,0 +1,10 @@
+node_modules/
+.wrangler/
+.dev.vars
+# Private: source photo paths, catalogue-number map, curation working files.
+.local/
+__pycache__/
+.venv/
+# Published images are built from private photos on this laptop and deployed
+# from here; thousands of them would bloat git.
+site/a/
