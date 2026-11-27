@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gallery Curator</title>
+<style>
+:root { --bg:#0b0b0f; --panel:#15151c; --line:#2a2a35; --ink:#eeece6; --muted:#9a98a6; --accent:#e8c27a; --sel:#5aa9ff; --bad:#ff7a7a; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui, "Segoe UI", sans-serif; }
+header { position:sticky; top:0; z-index:5; background:rgba(11,11,15,.96); border-bottom:1px solid var(--line); padding:.6rem 1rem; display:flex; flex-wrap:wrap; gap:.5rem 1rem; align-items:center; }
+h1 { font:400 1.15rem Georgia, serif; margin:0 .5rem 0 0; }
+.tabs { display:flex; gap:.25rem; }
+.tabs button, .tools button, .jobs button { font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:.4rem .75rem; cursor:pointer; }
+.tabs button[aria-pressed="true"] { background:var(--ink); color:var(--bg); }
+.tools button:hover, .jobs button:hover { border-color:var(--muted); }
+.tools button:disabled { opacity:.35; cursor:default; }
+.tools button.primary { background:var(--accent); color:#111; border-color:var(--accent); }
+.tools { display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; }
+.jobs { margin-left:auto; display:flex; gap:.35rem; align-items:center; }
+.selinfo { color:var(--muted); min-width:7rem; }
+.hint { color:var(--muted); padding:.5rem 1rem 0; font-size:.85rem; }
+.hint kbd { border:1px solid var(--line); border-radius:4px; padding:0 .3rem; font:12px ui-monospace, monospace; }
+#log { display:none; margin:.5rem 1rem 0; padding:.5rem .75rem; background:var(--panel); border:1px solid var(--line); border-radius:6px; font:12px/1.5 ui-monospace, Consolas, monospace; color:var(--muted); max-height:9rem; overflow:auto; white-space:pre-wrap; }
+#log.on { display:block; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px; padding:1rem; }
+.tile { position:relative; user-select:none; border-radius:10px; padding:6px; border:2px solid transparent; background:var(--panel); cursor:pointer; }
+.tile img { display:block; width:100%; aspect-ratio:1; object-fit:cover; border-radius:50%; background:#000; pointer-events:none; }
+.tile .meta { display:flex; justify-content:space-between; gap:.25rem; margin-top:4px; font:11px ui-monospace, Consolas, monospace; color:var(--muted); }
+.tile .star { position:absolute; top:4px; left:8px; color:var(--accent); font-size:18px; text-shadow:0 0 4px #000; }
+.tile .dup { position:absolute; top:4px; right:6px; background:var(--bad); color:#111; border-radius:999px; font:600 11px system-ui; padding:1px 6px; }
+.tile.sel { border-color:var(--sel); background:#1b2433; }
+.tile.g-a { box-shadow: inset 0 -4px 0 #7b5cd6; }
+.tile.g-b { box-shadow: inset 0 -4px 0 #2fa59f; }
+.tile.drop-before::before { content:""; position:absolute; left:-7px; top:6px; bottom:6px; width:4px; border-radius:2px; background:var(--accent); }
+.tile.dragging { opacity:.4; }
+.empty { padding:3rem 1rem; color:var(--muted); text-align:center; }
+#viewer { position:fixed; inset:0; z-index:10; display:none; background:rgba(0,0,0,.94); align-items:center; justify-content:center; flex-direction:column; gap:.5rem; }
+#viewer.on { display:flex; }
+#viewer img { max-width:94vw; max-height:84vh; object-fit:contain; }
+#viewer .cap { color:var(--muted); font:12px ui-monospace, monospace; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Gallery Curator</h1>
+  <div class="tabs" role="group" aria-label="View">
+    <button data-tab="shown" aria-pressed="true">Gallery <span id="n-shown"></span></button>
+    <button data-tab="inbox" aria-pressed="false">Inbox <span id="n-inbox"></span></button>
+    <button data-tab="hidden" aria-pressed="false">Hidden <span id="n-hidden"></span></button>
+  </div>
+  <div class="tools" id="tools"></div>
+  <div class="jobs">
+    <button id="scan" title="Look for new photos in your libraries and the incoming folder">Scan for new photos</button>
+    <button id="publish" title="Rebuild the site from the Gallery order">Publish to site</button>
+    <a id="preview" href="http://127.0.0.1:8762/" target="_blank" rel="noopener" style="color:var(--muted)">Preview site ↗</a>
+  </div>
+</header>
+<p class="hint" id="hint"></p>
+<pre id="log" aria-live="polite"></pre>
+<main class="grid" id="grid"></main>
+<div id="viewer" role="dialog" aria-label="Photo"><img id="v-img" alt=""><div class="cap" id="v-cap"></div></div>
+
+<script>
+const H = { "Content-Type": "application/json", "X-Curator": "1" };
+let sortBy = "best", items = [], tab = "shown", sel = new Set(), anchor = null, list = [], viewAt = -1;
+const grid = document.getElementById("grid");
+
+const TOOLS = {
+  shown: [["top", "Move to top", "T"], ["bottom", "Move to bottom", "B"], ["star", "★ Homepage", "S"], ["unstar", "Unstar", "U"],
+          ["hide", "Hide", "H"], ["inbox", "Back to Inbox", "I"], ["dedupe", "Hide repeats in a row", ""]],
+  inbox:  [["show", "Add to Gallery", "A", true], ["star", "★ Add + homepage", "S"], ["hide", "Hide", "H"], ["dedupe", "Keep best of each similar group", ""]],
+  hidden: [["inbox", "Back to Inbox", "I"], ["show", "Add to Gallery", "A"]],
+};
+const HINTS = {
+  shown: "This is the published order. Drag to rearrange, or select and press <kbd>T</kbd> top · <kbd>B</kbd> bottom · <kbd>S</kbd> homepage star · <kbd>H</kbd> hide. Red badges mark similar shots next to each other.",
+  inbox: "New candidates, grouped so similar shots sit together (coloured underline = same group). Click, <kbd>Shift</kbd>-click or <kbd>Ctrl</kbd>-click to select, then <kbd>A</kbd> add · <kbd>H</kbd> hide. <kbd>Space</kbd> or double-click to view large.",
+  hidden: "Hidden photos never appear on the site. Bring any back here.",
+};
+
+async function load() { apply(await (await fetch("/api/state")).json()); }
+
+function apply(state) {
+  items = state.items;
+  for (const t of ["shown", "inbox", "hidden"]) document.getElementById("n-" + t).textContent = items.filter(i => i.state === t).length.toLocaleString();
+  const log = document.getElementById("log");
+  if (state.job.name) { log.classList.add("on"); log.textContent = state.job.log.join("\n"); log.scrollTop = 1e9; }
+  for (const b of ["scan", "publish"]) document.getElementById(b).disabled = state.job.running;
+  if (state.job.running) setTimeout(load, 1500);
+  render();
+}
+
+function render() {
+  list = items.filter(i => i.state === tab);
+  if (tab === "shown") list.sort((a, b) => (a.pos ?? 1e9) - (b.pos ?? 1e9));
+  else if (sortBy === "date") list.sort((a, b) => (a.group ?? 0) - (b.group ?? 0) || (a.date || "").localeCompare(b.date || ""));
+  else {
+    // Best first, but keep each group of similar shots together.
+    const best = {};
+    for (const i of list) best[i.group] = Math.max(best[i.group] ?? 0, i.score ?? 0);
+    list.sort((a, b) => best[b.group] - best[a.group] || (a.group ?? 0) - (b.group ?? 0) || (b.score ?? 0) - (a.score ?? 0));
+  }
+  sel = new Set([...sel].filter(k => list.some(i => i.k === k)));
+
+  // Runs of similar photos side by side (same burst group).
+  const runLen = {};
+  for (let i = 0; i < list.length;) {
+    let j = i; while (list[i].group != null && j + 1 < list.length && list[j + 1].group === list[i].group) j++;
+    for (let x = i; x <= j; x++) runLen[list[x].k] = j - i + 1;
+    i = j + 1;
+  }
+  let flip = false, lastG = null;
+  grid.replaceChildren(...(list.length ? list.map((it, idx) => {
+    if (it.group !== lastG) { flip = !flip; lastG = it.group; }
+    const d = document.createElement("div");
+    d.className = "tile" + (sel.has(it.k) ? " sel" : "") + (tab !== "shown" && runLen[it.k] > 1 ? (flip ? " g-a" : " g-b") : "");
+    d.dataset.k = it.k; d.dataset.i = idx; d.tabIndex = 0;
+    d.draggable = tab === "shown";
+    d.title = `${it.name}\n${it.folder}\n${it.date || ""}${it.score != null ? "\nscore " + it.score : ""}`;
+    d.innerHTML = `<img loading="lazy" src="/t/${it.k}.jpg" alt="">` +
+      (it.star ? `<span class="star" title="On the homepage">★</span>` : "") +
+      (tab === "shown" && runLen[it.k] > 1 ? `<span class="dup" title="Similar shots next to each other">×${runLen[it.k]}</span>` : "") +
+      `<div class="meta"><span>${tab === "shown" ? (idx + 1) + "." : ""} ${it.id || ""}</span><span>${(it.date || "").slice(0, 10)}</span></div>`;
+    return d;
+  }) : [Object.assign(document.createElement("p"), { className: "empty", textContent: tab === "inbox" ? "Inbox is empty. Scan for new photos, or drop photos into .local/incoming and scan." : "Nothing here yet." })]));
+
+  const tools = document.getElementById("tools");
+  tools.replaceChildren(Object.assign(document.createElement("span"), { className: "selinfo", textContent: sel.size ? `${sel.size} selected` : "Nothing selected" }),
+    ...TOOLS[tab].map(([act, label, key, primary]) => {
+      const b = document.createElement("button");
+      b.textContent = label + (key ? ` (${key})` : ""); b.dataset.act = act;
+      if (primary) b.className = "primary";
+      b.disabled = act !== "dedupe" && !sel.size;
+      b.onclick = () => act === "dedupe" ? dedupe() : change(act, [...sel]);
+      return b;
+    }),
+    ...(tab === "shown" ? [] : [Object.assign(document.createElement("button"), {
+      textContent: sortBy === "best" ? "Sort: best first" : "Sort: by date",
+      title: "Switch between most crystal-like first and date order",
+      onclick: () => { sortBy = sortBy === "best" ? "date" : "best"; render(); scrollTo(0, 0); } })]));
+  document.getElementById("hint").innerHTML = HINTS[tab];
+}
+
+async function change(action, keys) {
+  if (!keys.length) return;
+  if (action === "show" || action === "star") keys = list.filter(i => keys.includes(i.k)).map(i => i.k); // keep on-screen order
+  const r = await fetch("/api/change", { method: "POST", headers: H, body: JSON.stringify({ action, keys }) });
+  if (["hide", "inbox", "show"].includes(action) || (action === "star" && tab !== "shown")) sel.clear();
+  apply(await r.json());
+}
+
+function dedupe() {
+  // Gallery: hide every photo that repeats the group of the one before it.
+  // Inbox: within each similar group keep the highest-scoring shot (or the selected one), hide the rest.
+  const hide = [];
+  if (tab === "shown") {
+    for (let i = 1; i < list.length; i++) if (list[i].group != null && list[i].group === list[i - 1].group) hide.push(list[i].k);
+  } else {
+    const groups = {};
+    for (const it of list) if (it.group != null) (groups[it.group] ??= []).push(it);
+    for (const g of Object.values(groups)) {
+      if (g.length < 2) continue;
+      const keep = g.find(i => sel.has(i.k)) || g.reduce((a, b) => ((b.score ?? 0) > (a.score ?? 0) ? b : a));
+      for (const it of g) if (it !== keep) hide.push(it.k);
+    }
+  }
+  if (!hide.length) return alert("No similar shots to hide here.");
+  if (confirm(`Hide ${hide.length} similar photo${hide.length > 1 ? "s" : ""}? You can bring them back from Hidden.`)) change("hide", hide);
+}
+
+// Selection: click, shift-click range, ctrl-click toggle.
+grid.addEventListener("click", e => {
+  const t = e.target.closest(".tile"); if (!t) return;
+  const i = +t.dataset.i, k = t.dataset.k;
+  if (e.shiftKey && anchor !== null) {
+    const [a, b] = [Math.min(anchor, i), Math.max(anchor, i)];
+    if (!e.ctrlKey) sel.clear();
+    for (let x = a; x <= b; x++) sel.add(list[x].k);
+  } else if (e.ctrlKey || e.metaKey) { sel.has(k) ? sel.delete(k) : sel.add(k); anchor = i; }
+  else { sel = new Set([k]); anchor = i; }
+  render();
+  grid.querySelector(`[data-k="${k}"]`)?.focus({ preventScroll: true });
+});
+grid.addEventListener("dblclick", e => { const t = e.target.closest(".tile"); if (t) view(+t.dataset.i); });
+
+// Drag to reorder (Gallery tab): drop the selection before the tile you release on.
+let dragKeys = null;
+grid.addEventListener("dragstart", e => {
+  const t = e.target.closest(".tile"); if (!t) return;
+  if (!sel.has(t.dataset.k)) { sel = new Set([t.dataset.k]); }
+  dragKeys = list.filter(i => sel.has(i.k)).map(i => i.k);
+  e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "x");
+  requestAnimationFrame(() => dragKeys.forEach(k => grid.querySelector(`[data-k="${k}"]`)?.classList.add("dragging")));
+});
+grid.addEventListener("dragover", e => {
+  if (!dragKeys) return; e.preventDefault();
+  grid.querySelectorAll(".drop-before").forEach(n => n.classList.remove("drop-before"));
+  e.target.closest(".tile")?.classList.add("drop-before");
+});
+grid.addEventListener("dragend", () => { dragKeys = null; render(); });
+grid.addEventListener("drop", e => {
+  e.preventDefault(); if (!dragKeys) return;
+  const t = e.target.closest(".tile");
+  const rest = list.map(i => i.k).filter(k => !dragKeys.includes(k));
+  let at = t ? rest.indexOf(t.dataset.k) : rest.length; if (at < 0) at = rest.length;
+  const order = [...rest.slice(0, at), ...dragKeys, ...rest.slice(at)];
+  dragKeys = null;
+  change("order", order);
+});
+
+// Large view
+const viewer = document.getElementById("viewer");
+function view(i) {
+  viewAt = (i + list.length) % list.length; const it = list[viewAt];
+  document.getElementById("v-img").src = `/v/${it.k}.jpg`;
+  document.getElementById("v-cap").textContent = `${it.id || ""}  ${it.date || ""}  ${it.name}  —  ←/→ browse · A add · H hide · S star · Esc close`;
+  viewer.classList.add("on");
+}
+viewer.addEventListener("click", () => viewer.classList.remove("on"));
+
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input, textarea")) return;
+  const k = e.key.toLowerCase();
+  if (viewer.classList.contains("on")) {
+    if (k === "escape") return viewer.classList.remove("on");
+    if (k === "arrowright") return view(viewAt + 1);
+    if (k === "arrowleft") return view(viewAt - 1);
+    const map = { a: "show", h: "hide", s: "star" };
+    if (map[k]) { const it = list[viewAt]; change(map[k], [it.k]).then(() => { if (list.length) view(Math.min(viewAt, list.length - 1)); }); }
+    return;
+  }
+  if (k === " " && sel.size) { e.preventDefault(); return view(list.findIndex(i => sel.has(i.k))); }
+  if (e.ctrlKey && k === "a") { e.preventDefault(); sel = new Set(list.map(i => i.k)); return render(); }
+  const map = { t: "top", b: "bottom", s: "star", u: "unstar", h: "hide", delete: "hide", i: "inbox", a: "show" };
+  const act = map[k];
+  if (act && TOOLS[tab].some(t => t[0] === act)) change(act, [...sel]);
+});
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  tab = b.dataset.tab; sel.clear(); anchor = null;
+  document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  render(); scrollTo(0, 0);
+});
+for (const [id, path] of [["scan", "/api/scan"], ["publish", "/api/publish"]]) {
+  document.getElementById(id).onclick = async () => { await fetch(path, { method: "POST", headers: H, body: "{}" }); load(); };
+}
+load();
+</script>
+</body>
+</html>

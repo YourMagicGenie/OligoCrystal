@@ -1,0 +1,15 @@
+{
+  // Static assets only: no Worker script, no bindings, no stored data.
+  "name": "oligocrystal-gallery",
+  "compatibility_date": "2026-11-10",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./site",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  },
+  "observability": { "enabled": false },
+  "routes": [
+    { "pattern": "crystals.ymgconsultingservices.com", "custom_domain": true }
+  ]
+}

@@ -1,6 +1,6 @@
 # OligoCrystal
 
-Coming-soon site for OligoCrystal, a YMG Consulting Services proof of concept: crystal and glass jewelry with a crystalline insert formed from the customer's purified DNA.
+Websites for OligoCrystal, a YMG Consulting Services proof of concept: crystal and glass jewelry with a crystalline insert formed from the customer's purified DNA. The repo root is the coming-soon site; [`gallery/`](gallery/README.md) is the Crystal Gallery.
 
 Live at <https://oligocrystal.ymgconsultingservices.com/>.
 
@@ -17,7 +17,8 @@ Live at <https://oligocrystal.ymgconsultingservices.com/>.
 | `site/` | Everything that is served: HTML, CSS, SVG art, `_headers` (CSP and security headers), `robots.txt` |
 | `wrangler.jsonc` | Cloudflare Workers static-assets config with the custom domain; no Worker script, no bindings |
 | `test/` | Node built-in tests for links, headers and content rules |
-| `.github/workflows/checks.yml` | Runs the tests on every pull request and on `main` |
+| `gallery/` | The OligoCrystal Crystal Gallery, a separate site at <https://crystals.ymgconsultingservices.com/> with its own curator and Worker; see [`gallery/README.md`](gallery/README.md) |
+| `.github/workflows/checks.yml` | Runs both sites' tests on every pull request and on `main` |
 
 ## Work on it
 

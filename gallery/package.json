@@ -1,0 +1,16 @@
+{
+  "name": "oligocrystal-gallery",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "dev": "wrangler dev",
+    "deploy": "npm test && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.160.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

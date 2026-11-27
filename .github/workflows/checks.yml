@@ -22,4 +22,12 @@ jobs:
         with:
           node-version: 22
       # The tests use only Node built-ins, so no npm install is needed.
-      - run: node --test test/*.test.mjs
+      - name: Jewelry site
+        run: node --test test/*.test.mjs
+      - name: Crystal Gallery
+        run: node --test gallery/test/*.test.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Crystal Gallery tools compile
+        run: python -m py_compile gallery/tools/*.py
